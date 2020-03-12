@@ -1,4 +1,3 @@
-#-----coding:utf-8------
 '''
 @project:stargan
 @author:yixu
@@ -8,19 +7,15 @@
 '''
 
 # -*- encoding: utf-8 -*-
-'''
-@Author  :   {Yixu}
-@Contact :   {xiyu111@mail.ustc.edu.cn}
-@Software:   PyCharm
-@File    :   Mul_Attribute_net.py
-@Time    :   12/3/2020 1:27 PM
-'''
 from torchsummary import summary
 from torch.utils.data import DataLoader
 import torch
 from torchvision.utils import save_image
 import torch.nn as nn
 import os
+from read_data import read_img
+
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 class down(nn.Module):
@@ -61,7 +56,7 @@ class Multi_Attribute_net(nn.Module):
         self.up3 = up(conv_dim * 16, conv_dim * 4,4,2,1)
         self.up4 = up(conv_dim * 8, conv_dim * 2,4,2,1)
         self.up5 = up(conv_dim * 4, conv_dim * 1,4,2,1)
-        self.up6 = nn.ConvTranspose2d(conv_dim, 3, kernel_size=4, stride=2, padding=1)
+        self.up6 = nn.ConvTranspose2d(conv_dim*2, 3, kernel_size=4, stride=2, padding=1)
 
     def forward(self, x):
         x1 = self.down1(x)
@@ -79,9 +74,8 @@ class Multi_Attribute_net(nn.Module):
         x = self.up4(z3)
         z4 = torch.cat([x,x2],dim=1)
         x = self.up5(z4)
-        z5 = x
+        z5 = torch.cat([x,x1],dim=1)
         x = self.up6(z5)
-        x = nn.Tanh()
         return x,z1,z2,z3,z4,z5
 
 def weights_init(m):
@@ -93,36 +87,34 @@ def weights_init(m):
 
 if __name__ == '__main__':
     net = Multi_Attribute_net()
-    print(net)
-    summary(net,(3,128,128))
-    # file_dir = "/home1/yixu/yixu_project/Datasets/celeba_128"
-    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    # cuda = True if torch.cuda.is_available() else False
-    # Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
-    # data = read_img.get_file(file_dir)
-    # dataloader = DataLoader(data, batch_size=32, shuffle=True)
-    #
-    # criterion = nn.L1Loss()
-    # if cuda:
-    #     net = net.cuda()
-    #
-    # net_optimizer = torch.optim.Adam(net.parameters(),lr = 0.0002,betas = (0.5,0.999))
-    #
-    # epoch_num = 40
-    # for epoch in range(epoch_num):
-    #     for batch_idx, data in enumerate(dataloader):
-    #         img = data.to(device)
-    #         batch_size = img.size(0)
-    #         preds = net(img)
-    #         loss = criterion(img.reshape(-1), preds.reshape(-1))
-    #         net.zero_grad()
-    #         loss.backword()
-    #         net_optimizer.step()
-    #         print('epoch:{}, epoch_num:{}, loss:{}'.format(epoch,epoch_num,loss))
-    #
+    file_dir = "/home1/yixu/yixu_project/Datasets/celeba_128"
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    cuda = True if torch.cuda.is_available() else False
+    Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
+    data = read_img.get_file(file_dir)
+    dataloader = DataLoader(data, batch_size=32, shuffle=True)
 
-
-
-
-
-
+    criterion = nn.MSELoss()
+    if cuda:
+        net = net.cuda()
+    net_optimizer = torch.optim.Adam(net.parameters(), lr=0.0002, betas=(0.5, 0.999))
+    epoch_num = 40
+    for epoch in range(epoch_num):
+        print("+++++++++++++++++++++training start+++++++++++++++++++++++")
+        for batch_idx, data in enumerate(dataloader):
+            img = data.to(device)
+            batch_size = img.size(0)
+            preds,z1,z2,z3,z4,z5 = net(img)
+            loss = criterion(img, preds)
+            net.zero_grad()
+            loss.backward()
+            net_optimizer.step()
+            if batch_idx % 1000 == 0 and batch_size is not 0:
+                print('epoch:{}, epoch_num:{}, batch_idx:{},loss:{}'.format(epoch, epoch_num,batch_idx,loss))
+                path_fake = '/home1/yixu/yixu_project/CVAE-GAN/output_image/images_epoch{:02d}_batch{:03d}.jpg'.format(epoch,batch_idx)
+                path_real = '/home1/yixu/yixu_project/CVAE-GAN/output_image/images_epoch{:02d}_batch{:03d}_real.jpg'.format(epoch,batch_idx)
+                save_image(preds, path_fake, nrow=8, normalize=True)
+                save_image(img, path_real, nrow=8, normalize=True)
+        torch.save(net.state_dict(),
+                   '/home1/yixu/yixu_project/CVAE-GAN/saved_model/Multi_Att_epoch{:02d}.pkl'.format(epoch))
+        print("++++++++++++++++++++++++save++++++++++++++++++++++++++++++")

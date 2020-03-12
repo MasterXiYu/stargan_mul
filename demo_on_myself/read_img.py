@@ -2,7 +2,7 @@
 '''
 @project:stargan
 @author:yixu
-@file:read_data.py
+@file:read_img.py
 @ide:PyCharm
 @create_time:2020/2/29 12:47
 '''
