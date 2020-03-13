@@ -11,7 +11,10 @@ import torch
 import torch.nn as nn
 
 import torch
-a = torch.ones([1,2])
-b = torch.ones([1,2])
-c = torch.cat([a,b],1)
+
+class net():
+    def __init__(self):
+        super(net,self).__init__()
+        self.conv1 = nn.Conv2d(3,6)
+
 print(c)

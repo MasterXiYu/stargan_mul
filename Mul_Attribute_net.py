@@ -15,7 +15,6 @@ import torch.nn as nn
 import os
 from read_data import read_img
 
-
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 class down(nn.Module):
@@ -28,7 +27,6 @@ class down(nn.Module):
 
     def forward(self, x):
         return self.main(x)
-
 
 class up(nn.Module):
     def __init__(self, dim_in, dim_out,kernel_size,stride,padding):
